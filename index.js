@@ -23,10 +23,11 @@ const crearTabla = async () => {
 };
 crearTabla();
 
-// Endpoint para recibir una queja
+// Crear una queja
 app.post('/api/quejas', async (req, res) => {
   const { tipo, texto } = req.body;
   if (!tipo || !texto) return res.status(400).json({ error: 'Faltan datos' });
+
   const folio = 'QJ-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   try {
     await pool.query(
@@ -39,18 +40,43 @@ app.post('/api/quejas', async (req, res) => {
   }
 });
 
-// Endpoint para consultar estatus por folio
+// Consultar estatus y texto de la queja por folio
 app.get('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   try {
     const [rows] = await pool.query(
-      'SELECT estatus FROM quejas WHERE folio = ?',
+      'SELECT estatus, texto FROM quejas WHERE folio = ?',
       [folio]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-    res.json({ estatus: rows[0].estatus });
+
+    res.json({
+      estatus: rows[0].estatus,
+      texto: rows[0].texto
+    });
   } catch (err) {
     res.status(500).json({ error: 'Error en la consulta' });
+  }
+});
+
+// Actualizar estatus de la queja por folio
+app.put('/api/quejas/:folio', async (req, res) => {
+  const { folio } = req.params;
+  const { estatus } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      'UPDATE quejas SET estatus = ? WHERE folio = ?',
+      [estatus, folio]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Queja no encontrada' });
+    }
+
+    res.json({ success: true, message: 'Queja actualizada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al actualizar la queja' });
   }
 });
 
