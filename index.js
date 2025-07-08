@@ -6,8 +6,11 @@ dotenv.config();
 
 const app = express();
 
-// Permitir CORS desde cualquier origen
+// Configuración CORS para permitir todos los orígenes
 app.use(cors({ origin: '*' }));
+
+// Manejar peticiones OPTIONS para CORS preflight
+app.options('*', cors());
 
 app.use(express.json());
 
@@ -26,7 +29,7 @@ const crearTabla = async () => {
 };
 crearTabla();
 
-// Crear una queja
+// Endpoint para crear una queja
 app.post('/api/quejas', async (req, res) => {
   const { tipo, texto } = req.body;
   if (!tipo || !texto) return res.status(400).json({ error: 'Faltan datos' });
@@ -43,7 +46,7 @@ app.post('/api/quejas', async (req, res) => {
   }
 });
 
-// Consultar estatus y texto de la queja por folio
+// Endpoint para consultar estatus y texto de una queja por folio
 app.get('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   try {
@@ -62,7 +65,7 @@ app.get('/api/quejas/:folio', async (req, res) => {
   }
 });
 
-// Actualizar estatus de la queja por folio
+// Endpoint para actualizar el estatus de una queja por folio
 app.put('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   const { estatus } = req.body;
