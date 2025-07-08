@@ -5,7 +5,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Permitir CORS desde cualquier origen
+app.use(cors({ origin: '*' }));
+
 app.use(express.json());
 
 // Crear la tabla si no existe
