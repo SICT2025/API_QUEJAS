@@ -6,15 +6,13 @@ dotenv.config();
 
 const app = express();
 
-// Configuración CORS para permitir todos los orígenes
+// Configurar CORS
 app.use(cors({ origin: '*' }));
-
-// Manejar peticiones OPTIONS para CORS preflight
 app.options('*', cors());
 
 app.use(express.json());
 
-// Crear la tabla si no existe
+// Crear tabla si no existe
 const crearTabla = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS quejas (
@@ -29,7 +27,7 @@ const crearTabla = async () => {
 };
 crearTabla();
 
-// Endpoint para crear una queja
+// Crear nueva queja
 app.post('/api/quejas', async (req, res) => {
   const { tipo, texto } = req.body;
   if (!tipo || !texto) return res.status(400).json({ error: 'Faltan datos' });
@@ -46,7 +44,19 @@ app.post('/api/quejas', async (req, res) => {
   }
 });
 
-// Endpoint para consultar estatus y texto de una queja por folio
+// Obtener todas las quejas
+app.get('/api/quejas', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT folio, tipo, texto, estatus, fecha FROM quejas ORDER BY fecha DESC'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener quejas' });
+  }
+});
+
+// Consultar una queja por folio
 app.get('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   try {
@@ -65,7 +75,7 @@ app.get('/api/quejas/:folio', async (req, res) => {
   }
 });
 
-// Endpoint para actualizar el estatus de una queja por folio
+// Actualizar estatus
 app.put('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   const { estatus } = req.body;
