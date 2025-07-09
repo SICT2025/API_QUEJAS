@@ -39,7 +39,7 @@ crearTablas();
 // Crear usuario admin solo una vez
 const crearUsuarioAdmin = async () => {
   const usuario = 'admin';
-  const contraseña = 'admin123';
+  const contraseña = 'T9r#7vLp$2xQ!mZw';
   try {
     const hash = await bcrypt.hash(contraseña, 10);
     await pool.query(
