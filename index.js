@@ -152,6 +152,11 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// ————— Aquí agregamos el endpoint /ping —————
+app.get('/ping', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Iniciar servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
