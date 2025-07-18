@@ -7,61 +7,64 @@ import bcrypt from 'bcrypt';
 dotenv.config();
 
 const app = express();
-
-// Configurar CORS
 app.use(cors({ origin: '*' }));
-app.options('*', cors());
 app.use(express.json());
 
 // Crear tablas si no existen
 const crearTablas = async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS quejas (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      folio VARCHAR(50) NOT NULL UNIQUE,
-      tipo VARCHAR(20) NOT NULL,
-      texto TEXT NOT NULL,
-      estatus VARCHAR(50) DEFAULT 'Recibida',
-      fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      usuario VARCHAR(50) NOT NULL UNIQUE,
-      password VARCHAR(100) NOT NULL
-    )
-  `);
-};
-crearTablas();
-
-// Crear usuario admin solo una vez
-const crearUsuarioAdmin = async () => {
-  const usuario = 'admin';
-  const contraseña = 'T9r#7vLp$2xQ!mZw';
   try {
-    const hash = await bcrypt.hash(contraseña, 10);
-    await pool.query(
-      'INSERT INTO usuarios (usuario, password) VALUES (?, ?)',
-      [usuario, hash]
-    );
-    console.log('✅ Usuario admin creado');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quejas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        folio VARCHAR(50) NOT NULL UNIQUE,
+        tipo VARCHAR(20) NOT NULL,
+        texto TEXT NOT NULL,
+        estatus VARCHAR(50) DEFAULT 'Recibida',
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario VARCHAR(50) NOT NULL UNIQUE,
+        password VARCHAR(100) NOT NULL
+      )
+    `);
+
+    console.log('✅ Tablas verificadas/creadas');
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      console.log('⚠️ El usuario admin ya existe');
-    } else {
-      console.error('❌ Error creando usuario admin:', err.message);
-    }
+    console.error('❌ Error creando tablas:', err.message);
   }
 };
 
-// Crear nueva queja
+// Crear usuario admin una vez
+const crearUsuarioAdmin = async () => {
+  const usuario = 'admin';
+  const contraseña = 'T9r#7vLp$2xQ!mZw';
+
+  try {
+    const [rows] = await pool.query('SELECT * FROM usuarios WHERE usuario = ?', [usuario]);
+    if (rows.length > 0) {
+      console.log('⚠️ El usuario admin ya existe');
+      return;
+    }
+
+    const hash = await bcrypt.hash(contraseña, 10);
+    await pool.query('INSERT INTO usuarios (usuario, password) VALUES (?, ?)', [usuario, hash]);
+    console.log('✅ Usuario admin creado');
+  } catch (err) {
+    console.error('❌ Error creando usuario admin:', err.message);
+  }
+};
+
+// Endpoint: nueva queja
 app.post('/api/quejas', async (req, res) => {
   const { tipo, texto } = req.body;
   if (!tipo || !texto) return res.status(400).json({ error: 'Faltan datos' });
 
   const folio = 'QJ-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
   try {
     await pool.query(
       'INSERT INTO quejas (folio, tipo, texto) VALUES (?, ?, ?)',
@@ -73,7 +76,7 @@ app.post('/api/quejas', async (req, res) => {
   }
 });
 
-// Obtener todas las quejas
+// Endpoint: obtener todas las quejas
 app.get('/api/quejas', async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -85,7 +88,7 @@ app.get('/api/quejas', async (req, res) => {
   }
 });
 
-// Consultar una queja por folio
+// Endpoint: obtener una queja por folio
 app.get('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   try {
@@ -95,16 +98,13 @@ app.get('/api/quejas/:folio', async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
 
-    res.json({
-      estatus: rows[0].estatus,
-      texto: rows[0].texto
-    });
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Error en la consulta' });
   }
 });
 
-// Actualizar estatus
+// Endpoint: actualizar estatus de queja
 app.put('/api/quejas/:folio', async (req, res) => {
   const { folio } = req.params;
   const { estatus } = req.body;
@@ -125,7 +125,7 @@ app.put('/api/quejas/:folio', async (req, res) => {
   }
 });
 
-// Endpoint de login con validación segura
+// Endpoint: login seguro
 app.post('/api/login', async (req, res) => {
   const { usuario, password } = req.body;
   try {
@@ -152,9 +152,10 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Arrancar servidor
+// Iniciar servidor
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`API escuchando en http://localhost:${PORT}`);
-  crearUsuarioAdmin(); // ejecutar una vez, puedes comentarlo después
+app.listen(PORT, async () => {
+  console.log(`🚀 API escuchando en http://localhost:${PORT}`);
+  await crearTablas();
+  await crearUsuarioAdmin();
 });
